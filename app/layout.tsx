@@ -4,7 +4,7 @@ import "./globals.css";
 
 const title = "I Love You";
 const description =
-  "A coding-window style heart animation with I love you in many languages.";
+  "A smooth floating-card heart animation with I love you in many languages.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const headerList = await headers();

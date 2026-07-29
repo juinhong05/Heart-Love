@@ -48,30 +48,10 @@ const cardColors = [
   "#cfdcff",
 ];
 
-const codeLines = [
-  "import random, math, time",
-  "from love import every_language",
-  "messages = [p.text for p in phrases]",
-  "colors = ['pink', 'lightblue', 'lightgreen', 'lemon']",
-  "def heart(t):",
-  "    x = 16 * math.sin(t) ** 3",
-  "    y = 13 * math.cos(t) - 5 * math.cos(2*t)",
-  "    return x, y",
-  "for card in floating_windows:",
-  "    card.move_to(heart(card.angle))",
-  "    card.caption = random.choice(messages)",
-  "    card.glow = 'for you'",
-  "while True:",
-  "    draw_editor_background()",
-  "    draw_love_cards()",
-  "    time.sleep(1 / 60)",
-];
-
 const fontStack =
   "'Segoe UI', 'Noto Sans', 'Segoe UI Symbol', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif";
-const monoStack = "'Cascadia Code', Consolas, 'SFMono-Regular', monospace";
-const totalCards = 176;
-const cycleSeconds = 13.2;
+const totalCards = 156;
+const cycleSeconds = 13.8;
 
 type Card = {
   index: number;
@@ -86,6 +66,9 @@ type Card = {
   driftX: number;
   driftY: number;
   rotation: number;
+  image?: HTMLCanvasElement;
+  imageWidth?: number;
+  imageHeight?: number;
 };
 
 function seeded(seed: number) {
@@ -136,7 +119,7 @@ function roundedRect(
   ctx.arcTo(x + w, y, x + w, y + h, radius);
   ctx.arcTo(x + w, y + h, x, y + h, radius);
   ctx.arcTo(x, y + h, x, y, radius);
-  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.arcTo(x, y, x + radius, y, radius);
   ctx.closePath();
 }
 
@@ -144,20 +127,20 @@ function makeCards() {
   const random = seeded(20260729);
 
   return Array.from({ length: totalCards }, (_, index) => {
-    const phrase = phrases[index % phrases.length];
+    const drawingOrder = index / totalCards;
     return {
       index,
-      t: (index / totalCards) * Math.PI * 2 + (random() - 0.5) * 0.08,
+      t: Math.PI + drawingOrder * Math.PI * 2 + (random() - 0.5) * 0.075,
       layer: index % 7,
-      phrase,
+      phrase: phrases[index % phrases.length],
       color: cardColors[index % cardColors.length],
       seed: random(),
-      delay: (index % 44) * 0.018,
+      delay: (index % 42) * 0.014,
       scatterX: random(),
       scatterY: random(),
       driftX: random() - 0.5,
       driftY: random() - 0.5,
-      rotation: (random() - 0.5) * 0.16,
+      rotation: (random() - 0.5) * 0.13,
     };
   });
 }
@@ -171,192 +154,150 @@ function fitText(
   weight = 700,
 ) {
   let size = maxSize;
-  do {
+  while (size >= minSize) {
     ctx.font = `${weight} ${size}px ${fontStack}`;
-    if (ctx.measureText(text).width <= maxWidth || size <= minSize) return size;
+    if (ctx.measureText(text).width <= maxWidth) return size;
     size -= 1;
-  } while (size >= minSize);
-
+  }
   return minSize;
 }
 
-function drawEditor(ctx: CanvasRenderingContext2D, width: number, height: number, elapsed: number) {
-  ctx.save();
-  ctx.translate(width / 2, height / 2);
-  ctx.rotate(-0.035);
-  ctx.translate(-width / 2, -height / 2);
-
-  const x = width * 0.075;
-  const y = height * 0.07;
-  const w = width * 0.85;
-  const h = height * 0.86;
-
-  ctx.fillStyle = "#081328";
+function drawBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const bg = ctx.createLinearGradient(0, 0, width, height);
+  bg.addColorStop(0, "#070313");
+  bg.addColorStop(0.5, "#10071a");
+  bg.addColorStop(1, "#020108");
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, width, height);
-  ctx.shadowColor = "rgba(71, 153, 255, 0.5)";
-  ctx.shadowBlur = 22;
-  ctx.fillStyle = "#0d1f3e";
-  ctx.fillRect(x, y, w, h);
-  ctx.shadowBlur = 0;
 
-  ctx.fillStyle = "#21395f";
-  ctx.fillRect(x, y, w, 34);
-  ctx.fillStyle = "#102546";
-  ctx.fillRect(x + 10, y + 9, 116, 21);
-  ctx.fillStyle = "#b8d8ff";
-  ctx.font = `600 ${Math.max(10, width * 0.007)}px ${fontStack}`;
-  ctx.fillText("temp.py", x + 28, y + 24);
+  const glow = ctx.createRadialGradient(
+    width * 0.52,
+    height * 0.5,
+    0,
+    width * 0.52,
+    height * 0.5,
+    Math.max(width, height) * 0.62,
+  );
+  glow.addColorStop(0, "rgba(255, 48, 181, 0.12)");
+  glow.addColorStop(0.52, "rgba(39, 188, 255, 0.045)");
+  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, height);
+}
 
-  const leftW = w * 0.56;
-  const rightX = x + leftW + 9;
-  ctx.strokeStyle = "rgba(74, 140, 226, 0.68)";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 12, y + 44, leftW - 18, h - 68);
-  ctx.strokeRect(rightX, y + 44, w - leftW - 22, h * 0.5);
-  ctx.strokeRect(rightX, y + h * 0.58, w - leftW - 22, h * 0.34);
+function heartPosition(
+  t: number,
+  layer: number,
+  width: number,
+  height: number,
+  phase: number,
+) {
+  const heart = heartPoint(t);
+  const isNarrow = width < 640;
+  const scaleX = isNarrow
+    ? Math.min(width * 0.015, height * 0.026)
+    : Math.min(width * 0.02, height * 0.043);
+  const scaleY = isNarrow
+    ? Math.min(width * 0.013, height * 0.02)
+    : Math.min(width * 0.017, height * 0.031);
+  const centerX = width * (isNarrow ? 0.39 : 0.52);
+  const centerY = height * (isNarrow ? 0.51 : 0.51);
+  const depthX = layer * clamp(width * (isNarrow ? 0.0021 : 0.0038), 1.3, 6.4);
+  const depthY = -layer * clamp(height * (isNarrow ? 0.003 : 0.0052), 1.4, 5.8);
+  const beat = 1 + Math.sin(phase * 1.75) * 0.018;
 
-  ctx.fillStyle = "#071227";
-  ctx.fillRect(x + 13, y + 45, leftW - 20, h - 70);
-  ctx.fillRect(rightX + 1, y + 45, w - leftW - 24, h * 0.5 - 2);
-  ctx.fillRect(rightX + 1, y + h * 0.58 + 1, w - leftW - 24, h * 0.34 - 2);
-
-  const lineH = clamp(height * 0.028, 14, 24);
-  const codeSize = clamp(width * 0.009, 10, 17);
-  const lineX = x + 28;
-  let lineY = y + 72;
-  ctx.font = `600 ${codeSize}px ${monoStack}`;
-
-  for (let row = 0; row < Math.floor((h - 92) / lineH); row += 1) {
-    const line = codeLines[row % codeLines.length];
-    const wobble = Math.sin(elapsed * 0.9 + row) * 0.3;
-    ctx.fillStyle = "rgba(130, 165, 215, 0.78)";
-    ctx.fillText(String(row + 1).padStart(2, " "), lineX, lineY + wobble);
-    ctx.fillStyle = row % 5 === 0 ? "#ba7dff" : row % 3 === 0 ? "#74ff8a" : "#e7eefb";
-    ctx.fillText(line.slice(0, 54), lineX + 42, lineY + wobble);
-    if (row % 4 === 2) {
-      ctx.fillStyle = "#ffe36e";
-      ctx.fillText("love", lineX + 260, lineY + wobble);
-    }
-    lineY += lineH;
-  }
-
-  ctx.fillStyle = "#214a83";
-  ctx.fillRect(rightX + 22, y + 68, w - leftW - 68, 34);
-  ctx.fillStyle = "#d8ebff";
-  ctx.font = `700 ${clamp(width * 0.01, 12, 18)}px ${fontStack}`;
-  ctx.fillText("Output", rightX + 42, y + 91);
-  ctx.fillStyle = "#e8eefc";
-  ctx.font = `600 ${clamp(width * 0.0085, 10, 15)}px ${monoStack}`;
-  ctx.fillText("Python 3.12.7 | love_languages.py", rightX + 32, y + h * 0.65);
-  ctx.fillStyle = "#65ff86";
-  ctx.fillText("In [1]: runfile('heart_love_languages.py')", rightX + 32, y + h * 0.72);
-
-  const scanY = y + 54 + ((elapsed * 44) % Math.max(80, h - 110));
-  ctx.strokeStyle = "rgba(100, 183, 255, 0.26)";
-  ctx.beginPath();
-  ctx.moveTo(x + 14, scanY);
-  ctx.lineTo(x + w - 20, scanY);
-  ctx.stroke();
-
-  ctx.restore();
+  return {
+    x: centerX + heart.x * scaleX * beat + depthX,
+    y: centerY - heart.y * scaleY * beat + depthY,
+  };
 }
 
 function cardPosition(card: Card, width: number, height: number, phase: number) {
-  const heart = heartPoint(card.t);
-  const scaleX = Math.min(width * 0.019, height * 0.043);
-  const scaleY = Math.min(width * 0.016, height * 0.029);
-  const centerX = width * 0.58;
-  const centerY = height * 0.49;
-  const depthX = card.layer * clamp(width * 0.0044, 2.5, 7);
-  const depthY = -card.layer * clamp(height * 0.006, 2.5, 6.5);
-  const beat = 1 + Math.sin(phase * 1.8) * 0.025;
-  const heartX = centerX + heart.x * scaleX * beat + depthX;
-  const heartY = centerY - heart.y * scaleY * beat + depthY;
+  const target = heartPosition(card.t, card.layer, width, height, phase);
+  const trail = heartPosition(card.t - 0.5, card.layer, width, height, phase);
+  const order = card.index / totalCards;
+  const scatterX = lerp(width * 0.11, width * 0.89, card.scatterX);
+  const scatterY = lerp(height * 0.1, height * 0.9, card.scatterY);
+  const floatX = Math.sin(phase * 1.2 + card.seed * 8) * 8 * card.driftX;
+  const floatY = Math.cos(phase * 0.95 + card.seed * 9) * 7 * card.driftY;
+  const drawDuration = 5.4;
+  const drawProgress = ease(phase / drawDuration);
 
-  const startX = width * 0.55 + Math.cos(card.t) * 38 + depthX;
-  const startY = -80 - (card.index % 35) * 5;
-  const scatterX = lerp(width * 0.12, width * 0.88, card.scatterX);
-  const scatterY = lerp(height * 0.08, height * 0.92, card.scatterY);
-  const floatX = Math.sin(phase * 1.4 + card.seed * 8) * 12 * card.driftX;
-  const floatY = Math.cos(phase * 1.1 + card.seed * 9) * 10 * card.driftY;
-
-  if (phase < 4.1) {
-    const p = ease((phase - card.delay) / 2.3);
+  if (phase < drawDuration) {
+    const trace = ease((drawProgress - order) / 0.075);
     return {
-      x: lerp(startX, heartX, p),
-      y: lerp(startY, heartY, p),
-      alpha: p,
-      rotation: card.rotation * p,
-      size: lerp(0.8, 1, p),
+      x: lerp(trail.x, target.x, trace),
+      y: lerp(trail.y, target.y, trace),
+      alpha: clamp((drawProgress - order + 0.035) / 0.055, 0, 1),
+      rotation: card.rotation * trace,
+      size: lerp(0.9, 1, trace),
     };
   }
 
-  if (phase < 6.2) {
+  if (phase < 7.4) {
     return {
-      x: heartX + floatX * 0.35,
-      y: heartY + floatY * 0.35,
+      x: target.x + floatX * 0.3,
+      y: target.y + floatY * 0.3,
       alpha: 1,
       rotation: card.rotation,
       size: 1,
     };
   }
 
-  const spread = ease((phase - 6.2 - card.delay * 0.45) / 2.4);
-  if (phase < 9.8) {
+  if (phase < 10.9) {
+    const spread = ease((phase - 7.4 - card.delay * 0.3) / 2.7);
     return {
-      x: lerp(heartX, scatterX, spread) + floatX,
-      y: lerp(heartY, scatterY, spread) + floatY,
+      x: lerp(target.x, scatterX, spread) + floatX,
+      y: lerp(target.y, scatterY, spread) + floatY,
       alpha: 1,
-      rotation: lerp(card.rotation, card.rotation * 2.6, spread),
+      rotation: lerp(card.rotation, card.rotation * 2.5, spread),
       size: lerp(1, 0.92, spread),
     };
   }
 
-  const fall = ((phase - 9.8) * (18 + card.seed * 24)) % (height + 120);
   return {
-    x: scatterX + floatX * 1.5,
-    y: ((scatterY + fall - 70) % (height + 130)) - 45,
+    x: scatterX + floatX * 1.7,
+    y: scatterY + floatY * 1.7,
     alpha: 0.92,
-    rotation: card.rotation * 2.6,
+    rotation: card.rotation * 2.5,
     size: 0.92,
   };
 }
 
-function drawCard(
-  ctx: CanvasRenderingContext2D,
-  card: Card,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  alpha: number,
-  rotation: number,
-  scale: number,
-) {
-  const w = clamp(width * 0.1, 92, 156) * scale;
+function renderCardImage(card: Card, width: number, dpr: number) {
+  const isNarrow = width < 640;
+  const w = isNarrow ? clamp(width * 0.18, 64, 96) : clamp(width * 0.1, 92, 156);
   const h = w * 0.46;
+  const pad = 24;
+  const cssWidth = w + pad * 2;
+  const cssHeight = h + pad * 2;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(cssWidth * dpr);
+  canvas.height = Math.ceil(cssHeight * dpr);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  ctx.scale(dpr, dpr);
+  ctx.translate(cssWidth / 2, cssHeight / 2);
+
   const barH = h * 0.34;
   const radius = clamp(w * 0.07, 5, 10);
-  const darkText = card.color === "#f31fc1" ? "rgba(37, 7, 42, 0.8)" : "rgba(24, 48, 72, 0.82)";
+  const darkText =
+    card.color === "#f31fc1" ? "rgba(37, 7, 42, 0.82)" : "rgba(24, 48, 72, 0.84)";
 
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rotation);
-  ctx.globalAlpha = alpha;
-
-  ctx.shadowColor = "rgba(0, 0, 0, 0.42)";
-  ctx.shadowBlur = 12;
+  ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
+  ctx.shadowBlur = 13;
   ctx.shadowOffsetX = 4;
   ctx.shadowOffsetY = 7;
   roundedRect(ctx, -w / 2, -h / 2, w, h, radius);
-  ctx.fillStyle = "rgba(241, 247, 252, 0.94)";
+  ctx.fillStyle = "rgba(241, 247, 252, 0.96)";
   ctx.fill();
 
   ctx.shadowColor = "transparent";
   roundedRect(ctx, -w / 2, -h / 2, w, h, radius);
   ctx.clip();
 
-  ctx.fillStyle = "#edf2f6";
+  ctx.fillStyle = "#eef3f7";
   ctx.fillRect(-w / 2, -h / 2, w, barH);
   ctx.fillStyle = card.color;
   ctx.fillRect(-w / 2, -h / 2 + barH, w, h - barH);
@@ -388,9 +329,39 @@ function drawCard(
   ctx.font = `750 ${size}px ${fontStack}`;
   ctx.fillText(card.phrase.text, 0, h * 0.17);
 
-  ctx.globalAlpha = alpha * 0.35;
+  ctx.globalAlpha = 0.36;
   ctx.font = `600 ${Math.max(7, size * 0.55)}px ${fontStack}`;
   ctx.fillText(card.phrase.language, 0, h * 0.37);
+
+  card.imageWidth = cssWidth;
+  card.imageHeight = cssHeight;
+  return canvas;
+}
+
+function refreshCardImages(cards: Card[], width: number, dpr: number) {
+  for (const card of cards) {
+    card.image = renderCardImage(card, width, dpr);
+  }
+}
+
+function drawCard(
+  ctx: CanvasRenderingContext2D,
+  card: Card,
+  x: number,
+  y: number,
+  alpha: number,
+  rotation: number,
+  scale: number,
+) {
+  if (!card.image || !card.imageWidth || !card.imageHeight || alpha <= 0.01) return;
+
+  const w = card.imageWidth * scale;
+  const h = card.imageHeight * scale;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(card.image, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
 
@@ -422,34 +393,24 @@ export default function LoveHeart() {
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      refreshCardImages(cards, width, dpr);
     };
 
     const restart = () => {
       elapsed = 0;
       cards = makeCards();
+      refreshCardImages(cards, width, dpr);
     };
 
     const frame = (now: number) => {
-      const dt = Math.min(0.033, (now - last) / 1000);
+      const dt = Math.min(0.026, (now - last) / 1000);
       last = now;
-      elapsed += dt;
+      if (!previewPhase) elapsed += dt;
       const phase = elapsed % cycleSeconds;
 
-      drawEditor(ctx, width, height, elapsed);
-
-      const vignette = ctx.createRadialGradient(
-        width * 0.55,
-        height * 0.48,
-        0,
-        width * 0.5,
-        height * 0.5,
-        Math.max(width, height) * 0.7,
-      );
-      vignette.addColorStop(0, "rgba(32, 70, 120, 0.06)");
-      vignette.addColorStop(0.7, "rgba(4, 8, 18, 0.08)");
-      vignette.addColorStop(1, "rgba(0, 0, 0, 0.45)");
-      ctx.fillStyle = vignette;
-      ctx.fillRect(0, 0, width, height);
+      drawBackground(ctx, width, height);
 
       const positioned = cards
         .map((card) => ({ card, position: cardPosition(card, width, height, phase) }))
@@ -461,8 +422,6 @@ export default function LoveHeart() {
           item.card,
           item.position.x,
           item.position.y,
-          width,
-          height,
           item.position.alpha,
           item.position.rotation,
           item.position.size,
