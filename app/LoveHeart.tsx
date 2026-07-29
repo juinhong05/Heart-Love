@@ -38,6 +38,20 @@ const phrases = [
   },
 ] as const;
 
+const scatterMessages = [
+  "\u8eab\u4f53\u5065\u5eb7",
+  "\u522b\u71ac\u591c",
+  "\u987a\u987a\u5229\u5229",
+  "\u4fdd\u6301\u597d\u5fc3\u60c5",
+  "\u597d\u597d\u5403\u996d",
+  "\u5929\u5929\u5f00\u5fc3",
+  "\u597d\u597d\u7231\u81ea\u5df1",
+  "\u6211\u7231\u4f60",
+  "\u6211\u60f3\u4f60\u4e86",
+  "\u591a\u559d\u6c34\u5440",
+  "\u5145\u5b9e\u81ea\u5df1",
+] as const;
+
 const cardColors = [
   "#bff2ff",
   "#c6ffb2",
@@ -58,6 +72,7 @@ type Card = {
   t: number;
   layer: number;
   phrase: (typeof phrases)[number];
+  scatterText: (typeof scatterMessages)[number];
   color: string;
   seed: number;
   delay: number;
@@ -67,6 +82,7 @@ type Card = {
   driftY: number;
   rotation: number;
   image?: HTMLCanvasElement;
+  scatterImage?: HTMLCanvasElement;
   imageWidth?: number;
   imageHeight?: number;
 };
@@ -133,6 +149,7 @@ function makeCards() {
       t: Math.PI + drawingOrder * Math.PI * 2 + (random() - 0.5) * 0.075,
       layer: index % 7,
       phrase: phrases[index % phrases.length],
+      scatterText: scatterMessages[index % scatterMessages.length],
       color: cardColors[index % cardColors.length],
       seed: random(),
       delay: (index % 42) * 0.014,
@@ -231,6 +248,7 @@ function cardPosition(card: Card, width: number, height: number, phase: number) 
       alpha: clamp((drawProgress - order + 0.035) / 0.055, 0, 1),
       rotation: card.rotation * trace,
       size: lerp(0.9, 1, trace),
+      textMix: 0,
     };
   }
 
@@ -241,17 +259,20 @@ function cardPosition(card: Card, width: number, height: number, phase: number) 
       alpha: 1,
       rotation: card.rotation,
       size: 1,
+      textMix: 0,
     };
   }
 
   if (phase < 10.9) {
     const spread = ease((phase - 7.4 - card.delay * 0.3) / 2.7);
+    const textMix = ease((phase - 7.55 - card.delay * 0.22) / 0.9);
     return {
       x: lerp(target.x, scatterX, spread) + floatX,
       y: lerp(target.y, scatterY, spread) + floatY,
       alpha: 1,
       rotation: lerp(card.rotation, card.rotation * 2.5, spread),
       size: lerp(1, 0.92, spread),
+      textMix,
     };
   }
 
@@ -261,10 +282,17 @@ function cardPosition(card: Card, width: number, height: number, phase: number) 
     alpha: 0.92,
     rotation: card.rotation * 2.5,
     size: 0.92,
+    textMix: 1,
   };
 }
 
-function renderCardImage(card: Card, width: number, dpr: number) {
+function renderCardImage(
+  card: Card,
+  width: number,
+  dpr: number,
+  text: string,
+  language?: string,
+) {
   const isNarrow = width < 640;
   const w = isNarrow ? clamp(width * 0.18, 64, 96) : clamp(width * 0.1, 92, 156);
   const h = w * 0.46;
@@ -322,16 +350,24 @@ function renderCardImage(card: Card, width: number, dpr: number) {
   ctx.lineTo(controlsX + 28, -h / 2 + barH * 0.78);
   ctx.stroke();
 
-  const size = fitText(ctx, card.phrase.text, w * 0.78, clamp(w * 0.14, 12, 20), 9);
+  const size = fitText(
+    ctx,
+    text,
+    w * 0.82,
+    language ? clamp(w * 0.14, 12, 20) : clamp(w * 0.17, 14, 23),
+    9,
+  );
   ctx.fillStyle = darkText;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `750 ${size}px ${fontStack}`;
-  ctx.fillText(card.phrase.text, 0, h * 0.17);
+  ctx.fillText(text, 0, language ? h * 0.17 : h * 0.24);
 
-  ctx.globalAlpha = 0.36;
-  ctx.font = `600 ${Math.max(7, size * 0.55)}px ${fontStack}`;
-  ctx.fillText(card.phrase.language, 0, h * 0.37);
+  if (language) {
+    ctx.globalAlpha = 0.36;
+    ctx.font = `600 ${Math.max(7, size * 0.55)}px ${fontStack}`;
+    ctx.fillText(language, 0, h * 0.37);
+  }
 
   card.imageWidth = cssWidth;
   card.imageHeight = cssHeight;
@@ -340,7 +376,8 @@ function renderCardImage(card: Card, width: number, dpr: number) {
 
 function refreshCardImages(cards: Card[], width: number, dpr: number) {
   for (const card of cards) {
-    card.image = renderCardImage(card, width, dpr);
+    card.image = renderCardImage(card, width, dpr, card.phrase.text, card.phrase.language);
+    card.scatterImage = renderCardImage(card, width, dpr, card.scatterText);
   }
 }
 
@@ -352,6 +389,7 @@ function drawCard(
   alpha: number,
   rotation: number,
   scale: number,
+  textMix: number,
 ) {
   if (!card.image || !card.imageWidth || !card.imageHeight || alpha <= 0.01) return;
 
@@ -360,8 +398,12 @@ function drawCard(
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rotation);
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha = alpha * (1 - textMix);
   ctx.drawImage(card.image, -w / 2, -h / 2, w, h);
+  if (card.scatterImage && textMix > 0.01) {
+    ctx.globalAlpha = alpha * textMix;
+    ctx.drawImage(card.scatterImage, -w / 2, -h / 2, w, h);
+  }
   ctx.restore();
 }
 
@@ -425,6 +467,7 @@ export default function LoveHeart() {
           item.position.alpha,
           item.position.rotation,
           item.position.size,
+          item.position.textMix,
         );
       }
 
