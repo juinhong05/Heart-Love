@@ -53,13 +53,13 @@ const scatterMessages = [
 ] as const;
 
 const cardColors = [
-  "#bff2ff",
-  "#c6ffb2",
-  "#fff7bd",
-  "#ffd2e1",
-  "#f31fc1",
-  "#dff4ff",
-  "#cfdcff",
+  "#ffd9e7",
+  "#ffe7b8",
+  "#dff2d4",
+  "#f8d7c8",
+  "#e9dcff",
+  "#fff2cb",
+  "#cfeae2",
 ];
 
 const fontStack =
@@ -181,24 +181,31 @@ function fitText(
 
 function drawBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
   const bg = ctx.createLinearGradient(0, 0, width, height);
-  bg.addColorStop(0, "#070313");
-  bg.addColorStop(0.5, "#10071a");
-  bg.addColorStop(1, "#020108");
+  bg.addColorStop(0, "#34121f");
+  bg.addColorStop(0.45, "#7b3045");
+  bg.addColorStop(1, "#2a0d18");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, width, height);
 
-  const glow = ctx.createRadialGradient(
-    width * 0.52,
+  const blush = ctx.createLinearGradient(0, height * 0.15, width, height * 0.85);
+  blush.addColorStop(0, "rgba(255, 231, 221, 0.22)");
+  blush.addColorStop(0.48, "rgba(255, 171, 190, 0.24)");
+  blush.addColorStop(1, "rgba(122, 31, 56, 0)");
+  ctx.fillStyle = blush;
+  ctx.fillRect(0, 0, width, height);
+
+  const vignette = ctx.createRadialGradient(
+    width * 0.5,
     height * 0.5,
-    0,
-    width * 0.52,
+    Math.min(width, height) * 0.12,
+    width * 0.5,
     height * 0.5,
-    Math.max(width, height) * 0.62,
+    Math.max(width, height) * 0.72,
   );
-  glow.addColorStop(0, "rgba(255, 48, 181, 0.12)");
-  glow.addColorStop(0.52, "rgba(39, 188, 255, 0.045)");
-  glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = glow;
+  vignette.addColorStop(0, "rgba(255, 232, 224, 0.18)");
+  vignette.addColorStop(0.62, "rgba(83, 21, 38, 0.05)");
+  vignette.addColorStop(1, "rgba(23, 5, 14, 0.56)");
+  ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 }
 
@@ -310,36 +317,35 @@ function renderCardImage(
 
   const barH = h * 0.34;
   const radius = clamp(w * 0.07, 5, 10);
-  const darkText =
-    card.color === "#f31fc1" ? "rgba(37, 7, 42, 0.82)" : "rgba(24, 48, 72, 0.84)";
+  const darkText = "rgba(82, 34, 55, 0.86)";
 
-  ctx.shadowColor = "rgba(0, 0, 0, 0.38)";
-  ctx.shadowBlur = 13;
-  ctx.shadowOffsetX = 4;
-  ctx.shadowOffsetY = 7;
+  ctx.shadowColor = "rgba(76, 18, 39, 0.28)";
+  ctx.shadowBlur = 16;
+  ctx.shadowOffsetX = 2.5;
+  ctx.shadowOffsetY = 8;
   roundedRect(ctx, -w / 2, -h / 2, w, h, radius);
-  ctx.fillStyle = "rgba(241, 247, 252, 0.96)";
+  ctx.fillStyle = "rgba(255, 250, 250, 0.96)";
   ctx.fill();
 
   ctx.shadowColor = "transparent";
   roundedRect(ctx, -w / 2, -h / 2, w, h, radius);
   ctx.clip();
 
-  ctx.fillStyle = "#eef3f7";
+  ctx.fillStyle = "#fff7fa";
   ctx.fillRect(-w / 2, -h / 2, w, barH);
   ctx.fillStyle = card.color;
   ctx.fillRect(-w / 2, -h / 2 + barH, w, h - barH);
 
-  ctx.strokeStyle = "rgba(115, 132, 148, 0.24)";
+  ctx.strokeStyle = "rgba(140, 76, 98, 0.2)";
   ctx.lineWidth = 1;
   ctx.strokeRect(-w / 2 + 0.5, -h / 2 + 0.5, w - 1, h - 1);
 
-  ctx.fillStyle = "#2b6daf";
+  ctx.fillStyle = "#ff7fa4";
   ctx.beginPath();
   ctx.ellipse(-w / 2 + 16, -h / 2 + barH * 0.48, 3.2, 8, 0.45, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.strokeStyle = "rgba(104, 119, 136, 0.28)";
+  ctx.strokeStyle = "rgba(168, 90, 113, 0.26)";
   ctx.lineWidth = 1.3;
   const controlsX = w / 2 - 44;
   ctx.strokeRect(controlsX, -h / 2 + barH * 0.34, 7, 7);

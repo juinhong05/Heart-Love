@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #05040c;
-  --foreground: #fff0f7;
+  --background: #34121f;
+  --foreground: #fff7fa;
 }
 
 @theme inline {
@@ -42,7 +42,7 @@ select {
   position: fixed;
   inset: 0;
   min-height: 100svh;
-  background: #05040c;
+  background: #34121f;
   isolation: isolate;
 }
 
@@ -59,9 +59,9 @@ select {
   right: clamp(18px, 4vw, 42px);
   bottom: clamp(16px, 4vw, 34px);
   z-index: 2;
-  color: rgba(255, 240, 247, 0.62);
+  color: rgba(255, 247, 250, 0.74);
   font-size: clamp(0.82rem, 2vw, 1rem);
   letter-spacing: 0;
   text-transform: lowercase;
-  text-shadow: 0 0 18px rgba(255, 97, 173, 0.5);
+  text-shadow: 0 0 18px rgba(255, 166, 187, 0.58);
 }
