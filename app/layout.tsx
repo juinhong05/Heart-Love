@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import "./globals.css";
 
 const title = "I Love You";
-const description = "A glowing heart animation with I love you in many languages.";
+const description =
+  "A coding-window style heart animation with I love you in many languages.";
 
 export async function generateMetadata(): Promise<Metadata> {
   const headerList = await headers();
@@ -27,7 +28,7 @@ export async function generateMetadata(): Promise<Metadata> {
           url: imageUrl,
           width: 1200,
           height: 630,
-          alt: "A glowing heart with I Love You written in the center.",
+          alt: "A heart made from floating love message cards.",
         },
       ],
     },
