@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const phrases = [
   { language: "English", text: "I love you" },
@@ -417,6 +417,16 @@ export default function LoveHeart() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+  const [hasStartedMusic, setHasStartedMusic] = useState(false);
+
+  const startMusic = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio || !audio.paused) return;
+
+    void audio.play().catch(() => {
+      // Browsers can block playback until a direct user interaction occurs.
+    });
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -433,15 +443,6 @@ export default function LoveHeart() {
     const previewPhase = new URLSearchParams(window.location.search).get("phase");
     let elapsed = previewPhase ? Number(previewPhase) || 0 : 0;
     let cards = makeCards();
-
-    const startMusic = () => {
-      const audio = audioRef.current;
-      if (!audio || !audio.paused) return;
-
-      void audio.play().catch(() => {
-        // Browsers can block playback until a direct user interaction occurs.
-      });
-    };
 
     // Start immediately where the browser permits sound autoplay. A first tap
     // still starts it in browsers that require a user gesture.
@@ -498,7 +499,7 @@ export default function LoveHeart() {
     resize();
     window.addEventListener("resize", resize);
     const handlePointerDown = (event: PointerEvent) => {
-      if ((event.target as HTMLElement | null)?.closest(".music-toggle")) return;
+      if ((event.target as HTMLElement | null)?.closest(".music-toggle, .music-prompt")) return;
       restart();
       startMusic();
     };
@@ -511,16 +512,14 @@ export default function LoveHeart() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, []);
+  }, [startMusic]);
 
   const toggleMusic = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (audio.paused) {
-      void audio.play().catch(() => {
-        setIsMusicPlaying(false);
-      });
+      startMusic();
       return;
     }
 
@@ -534,11 +533,19 @@ export default function LoveHeart() {
         ref={audioRef}
         loop
         preload="metadata"
-        onPlay={() => setIsMusicPlaying(true)}
+        onPlay={() => {
+          setIsMusicPlaying(true);
+          setHasStartedMusic(true);
+        }}
         onPause={() => setIsMusicPlaying(false)}
       >
         <source src="/love-me.mp3" type="audio/mpeg" />
       </audio>
+      {!hasStartedMusic && (
+        <button type="button" className="music-prompt" onClick={startMusic}>
+          Tap to begin
+        </button>
+      )}
       <button
         type="button"
         className="music-toggle"
