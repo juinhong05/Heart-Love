@@ -38,6 +38,8 @@ test("server-renders the love heart page shell", async () => {
   assert.match(html, /<main class="love-stage"/);
   assert.match(html, /aria-label="Animated love messages forming a heart"/);
   assert.match(html, /<canvas class="love-canvas"><\/canvas>/);
+  assert.match(html, /<source src="\/love-me\.mp3" type="audio\/mpeg"\/>/);
+  assert.match(html, /class="music-toggle"/);
   assert.match(html, /<div class="signature" aria-hidden="true">for you<\/div>/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site|react-loading-skeleton/);
 });
@@ -57,11 +59,14 @@ test("keeps the animation content and lovely styling in source", async () => {
   assert.match(loveHeart, /\\u5145\\u5b9e\\u81ea\\u5df1/);
   assert.match(loveHeart, /card\.scatterImage = renderCardImage/);
   assert.match(loveHeart, /textMix/);
+  assert.match(loveHeart, /src="\/love-me\.mp3"/);
+  assert.match(loveHeart, /aria-label=\{isMusicPlaying/);
   assert.match(loveHeart, /bg\.addColorStop\(0, "#34121f"\)/);
   assert.match(loveHeart, /"#ffd9e7"/);
 
   assert.match(globals, /--background:\s*#34121f/);
   assert.match(globals, /\.love-canvas/);
   assert.match(globals, /\.signature/);
+  assert.match(globals, /\.music-toggle/);
   assert.match(layout, /A soft romantic heart animation with love-note cards and sweet messages\./);
 });

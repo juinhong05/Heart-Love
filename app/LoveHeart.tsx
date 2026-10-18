@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const phrases = [
   { language: "English", text: "I love you" },
@@ -415,6 +415,8 @@ function drawCard(
 
 export default function LoveHeart() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -431,6 +433,15 @@ export default function LoveHeart() {
     const previewPhase = new URLSearchParams(window.location.search).get("phase");
     let elapsed = previewPhase ? Number(previewPhase) || 0 : 0;
     let cards = makeCards();
+
+    const startMusic = () => {
+      const audio = audioRef.current;
+      if (!audio || !audio.paused) return;
+
+      void audio.play().catch(() => {
+        // Browsers can block playback until a direct user interaction occurs.
+      });
+    };
 
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -482,19 +493,57 @@ export default function LoveHeart() {
 
     resize();
     window.addEventListener("resize", resize);
-    window.addEventListener("pointerdown", restart);
+    const handlePointerDown = (event: PointerEvent) => {
+      if ((event.target as HTMLElement | null)?.closest(".music-toggle")) return;
+      restart();
+      startMusic();
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
     raf = requestAnimationFrame(frame);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
-      window.removeEventListener("pointerdown", restart);
+      window.removeEventListener("pointerdown", handlePointerDown);
     };
   }, []);
+
+  const toggleMusic = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      void audio.play().catch(() => {
+        setIsMusicPlaying(false);
+      });
+      return;
+    }
+
+    audio.pause();
+  };
 
   return (
     <main className="love-stage" aria-label="Animated love messages forming a heart">
       <canvas ref={canvasRef} className="love-canvas" />
+      <audio
+        ref={audioRef}
+        loop
+        preload="metadata"
+        onPlay={() => setIsMusicPlaying(true)}
+        onPause={() => setIsMusicPlaying(false)}
+      >
+        <source src="/love-me.mp3" type="audio/mpeg" />
+      </audio>
+      <button
+        type="button"
+        className="music-toggle"
+        aria-label={isMusicPlaying ? "Pause background music" : "Play background music"}
+        aria-pressed={isMusicPlaying}
+        onClick={toggleMusic}
+      >
+        <span aria-hidden="true">{isMusicPlaying ? "II" : "♪"}</span>
+      </button>
       <div className="signature" aria-hidden="true">
         for you
       </div>
