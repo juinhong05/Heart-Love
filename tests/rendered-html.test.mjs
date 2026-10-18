@@ -63,6 +63,9 @@ test("keeps the animation content and lovely styling in source", async () => {
   assert.match(loveHeart, /Tap to begin/);
   assert.match(loveHeart, /hasStartedExperience/);
   assert.match(loveHeart, /onPointerDown=\{beginExperience\}/);
+  assert.match(loveHeart, /const centerX = width \* 0\.5/);
+  assert.match(loveHeart, /const scale = Math\.min\(/);
+  assert.doesNotMatch(loveHeart, /const scaleX/);
   assert.match(loveHeart, /startMusic\(\);/);
   assert.match(loveHeart, /Math\.min\(elapsed, cycleSeconds\)/);
   assert.match(loveHeart, /bg\.addColorStop\(0, "#34121f"\)/);

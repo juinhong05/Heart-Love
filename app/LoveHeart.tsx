@@ -217,22 +217,23 @@ function heartPosition(
   phase: number,
 ) {
   const heart = heartPoint(t);
-  const isNarrow = width < 640;
-  const scaleX = isNarrow
-    ? Math.min(width * 0.015, height * 0.026)
-    : Math.min(width * 0.02, height * 0.043);
-  const scaleY = isNarrow
-    ? Math.min(width * 0.013, height * 0.02)
-    : Math.min(width * 0.017, height * 0.031);
-  const centerX = width * (isNarrow ? 0.39 : 0.52);
-  const centerY = height * (isNarrow ? 0.51 : 0.51);
-  const depthX = layer * clamp(width * (isNarrow ? 0.0021 : 0.0038), 1.3, 6.4);
-  const depthY = -layer * clamp(height * (isNarrow ? 0.003 : 0.0052), 1.4, 5.8);
+  const cardMargin = clamp(Math.min(width * 0.09, height * 0.08), 48, 96);
+  const scale = Math.min(
+    (width - cardMargin * 2) / 34,
+    (height - cardMargin * 2) / 31,
+    width * 0.02,
+    height * 0.0255,
+  );
+  const centerX = width * 0.5;
+  // The path has more depth below its mathematical midpoint, so shift it up.
+  const centerY = height * 0.5 - scale * 2.55;
+  const depthX = layer * clamp(width * 0.0032, 1.3, 6.4);
+  const depthY = -layer * clamp(height * 0.0045, 1.4, 5.8);
   const beat = 1 + Math.sin(phase * 1.75) * 0.018;
 
   return {
-    x: centerX + heart.x * scaleX * beat + depthX,
-    y: centerY - heart.y * scaleY * beat + depthY,
+    x: centerX + heart.x * scale * beat + depthX,
+    y: centerY - heart.y * scale * beat + depthY,
   };
 }
 
