@@ -61,6 +61,8 @@ test("keeps the animation content and lovely styling in source", async () => {
   assert.match(loveHeart, /textMix/);
   assert.match(loveHeart, /src="\/love-me\.mp3"/);
   assert.match(loveHeart, /aria-label=\{isMusicPlaying/);
+  assert.match(loveHeart, /startMusic\(\);/);
+  assert.match(loveHeart, /Math\.min\(elapsed, cycleSeconds\)/);
   assert.match(loveHeart, /bg\.addColorStop\(0, "#34121f"\)/);
   assert.match(loveHeart, /"#ffd9e7"/);
 

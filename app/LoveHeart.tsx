@@ -443,6 +443,10 @@ export default function LoveHeart() {
       });
     };
 
+    // Start immediately where the browser permits sound autoplay. A first tap
+    // still starts it in browsers that require a user gesture.
+    startMusic();
+
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = window.innerWidth;
@@ -466,8 +470,8 @@ export default function LoveHeart() {
     const frame = (now: number) => {
       const dt = Math.min(0.026, (now - last) / 1000);
       last = now;
-      if (!previewPhase) elapsed += dt;
-      const phase = elapsed % cycleSeconds;
+      if (!previewPhase) elapsed = Math.min(elapsed + dt, cycleSeconds);
+      const phase = Math.min(elapsed, cycleSeconds);
 
       drawBackground(ctx, width, height);
 
