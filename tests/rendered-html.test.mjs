@@ -39,9 +39,7 @@ test("server-renders the love heart page shell", async () => {
   assert.match(html, /aria-label="Animated love messages forming a heart"/);
   assert.match(html, /<canvas class="love-canvas"><\/canvas>/);
   assert.match(html, /<source src="\/love-me\.mp3" type="audio\/mpeg"\/>/);
-  assert.match(html, /class="music-toggle"/);
   assert.match(html, /class="music-prompt"/);
-  assert.match(html, /<div class="signature" aria-hidden="true">for you<\/div>/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site|react-loading-skeleton/);
 });
 
@@ -63,6 +61,8 @@ test("keeps the animation content and lovely styling in source", async () => {
   assert.match(loveHeart, /src="\/love-me\.mp3"/);
   assert.match(loveHeart, /aria-label=\{isMusicPlaying/);
   assert.match(loveHeart, /Tap to begin/);
+  assert.match(loveHeart, /hasStartedExperience/);
+  assert.match(loveHeart, /onPointerDown=\{beginExperience\}/);
   assert.match(loveHeart, /startMusic\(\);/);
   assert.match(loveHeart, /Math\.min\(elapsed, cycleSeconds\)/);
   assert.match(loveHeart, /bg\.addColorStop\(0, "#34121f"\)/);

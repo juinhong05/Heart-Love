@@ -417,7 +417,7 @@ export default function LoveHeart() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
-  const [hasStartedMusic, setHasStartedMusic] = useState(false);
+  const [hasStartedExperience, setHasStartedExperience] = useState(false);
 
   const startMusic = useCallback(() => {
     const audio = audioRef.current;
@@ -429,6 +429,8 @@ export default function LoveHeart() {
   }, []);
 
   useEffect(() => {
+    if (!hasStartedExperience) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -443,10 +445,6 @@ export default function LoveHeart() {
     const previewPhase = new URLSearchParams(window.location.search).get("phase");
     let elapsed = previewPhase ? Number(previewPhase) || 0 : 0;
     let cards = makeCards();
-
-    // Start immediately where the browser permits sound autoplay. A first tap
-    // still starts it in browsers that require a user gesture.
-    startMusic();
 
     const resize = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -512,7 +510,7 @@ export default function LoveHeart() {
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointerdown", handlePointerDown);
     };
-  }, [startMusic]);
+  }, [hasStartedExperience, startMusic]);
 
   const toggleMusic = () => {
     const audio = audioRef.current;
@@ -526,38 +524,49 @@ export default function LoveHeart() {
     audio.pause();
   };
 
+  const beginExperience = () => {
+    if (hasStartedExperience) return;
+    setHasStartedExperience(true);
+    startMusic();
+  };
+
   return (
-    <main className="love-stage" aria-label="Animated love messages forming a heart">
+    <main
+      className="love-stage"
+      aria-label="Animated love messages forming a heart"
+      onPointerDown={beginExperience}
+    >
       <canvas ref={canvasRef} className="love-canvas" />
       <audio
         ref={audioRef}
         loop
         preload="metadata"
-        onPlay={() => {
-          setIsMusicPlaying(true);
-          setHasStartedMusic(true);
-        }}
+        onPlay={() => setIsMusicPlaying(true)}
         onPause={() => setIsMusicPlaying(false)}
       >
         <source src="/love-me.mp3" type="audio/mpeg" />
       </audio>
-      {!hasStartedMusic && (
+      {!hasStartedExperience && (
         <button type="button" className="music-prompt" onClick={startMusic}>
           Tap to begin
         </button>
       )}
-      <button
-        type="button"
-        className="music-toggle"
-        aria-label={isMusicPlaying ? "Pause background music" : "Play background music"}
-        aria-pressed={isMusicPlaying}
-        onClick={toggleMusic}
-      >
-        <span aria-hidden="true">{isMusicPlaying ? "II" : "♪"}</span>
-      </button>
-      <div className="signature" aria-hidden="true">
-        for you
-      </div>
+      {hasStartedExperience && (
+        <>
+          <button
+            type="button"
+            className="music-toggle"
+            aria-label={isMusicPlaying ? "Pause background music" : "Play background music"}
+            aria-pressed={isMusicPlaying}
+            onClick={toggleMusic}
+          >
+            <span aria-hidden="true">{isMusicPlaying ? "II" : "♪"}</span>
+          </button>
+          <div className="signature" aria-hidden="true">
+            for you
+          </div>
+        </>
+      )}
     </main>
   );
 }
